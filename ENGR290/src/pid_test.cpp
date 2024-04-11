@@ -15,7 +15,8 @@
 #define FAN_PIN 9
 
 int delay_time = 50;
-int angle_1 = 65;
+int angle_1 = 90;
+int rot_angle = 45;
 
 
 // PID GAINS
@@ -63,7 +64,7 @@ void setup() {
   byte status = mpu.begin();
   while (status != 0) {}  //stop if IMU is not found
   servo.attach(SERVO_PIN);
-  servo.write(75);
+  servo.write(angle_1);
   delay(1000);
   mpu.calcOffsets(true, true);
   Wire.setWireTimeout(3000, true);
@@ -90,7 +91,7 @@ void loop() {
   Serial.println(" ");
   delay(100);
   float angle = mpu.getAngleZ();
-  int control_pid = 75-update(dt,angle,angleSetpoint);
+  int control_pid = angle_1-update(dt,angle,angleSetpoint);
   Serial.print("angle control ");
   Serial.println(control_pid);
   controller(control_pid);
@@ -131,7 +132,7 @@ float update(float dt, float currentValue, float targetValue) {
 
   float result = P + I + D;
 
-  return constrain(result, -45, 45);
+  return constrain(result, -rot_angle, rot_angle);
 }
 // pid angle
 
