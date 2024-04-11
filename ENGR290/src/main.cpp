@@ -27,7 +27,7 @@ MPU6050 mpu(Wire);
                                                 Setup
 =================================================================================================*/
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   Wire.begin();

@@ -40,22 +40,23 @@ unsigned long timer;  // global timer
                                                 Variables
 =================================================================================================*/
 Servo servo;
-float distance=0;
+int distance;
 long duration;
 MPU6050 mpu(Wire);
 static float integrationStored=0,integralSaturation=1;
 float valueLast,velocity,errorLast,currentTime=0;
-bool isTurning=false;
-
 
 /*=================================================================================================
                                                 Prototypes
 =================================================================================================*/
+
+void controller(int);
+float update(float, float, float);
 /*=================================================================================================
                                                 Setup
 =================================================================================================*/
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   Wire.begin();
@@ -72,8 +73,13 @@ void setup() {
                                                 Loop
 =================================================================================================*/
 void loop() {
-  dt=millis()-currentTime;
+  dt = millis() - currentTime;
   analogWrite(FAN_PIN, 255);
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+
   mpu.update();
   Serial.print("Angle X: ");
   Serial.println(mpu.getAngleX());
@@ -92,45 +98,6 @@ void loop() {
   currentTime=millis();
 }
 
-
-
-
-/*=================================================================================================
-                                                Interrupts
-=================================================================================================*/
-
-/*=================================================================================================
-                                                Functions
-=================================================================================================*/
-
-void turnRight() {
-  isTurning = true;
-  controller(120);
-  delay(1000);
-  isTurning = false;
-}
-float measureDistance(float newDistance){
-  if(isTurning){
-    return;
-  }
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  duration=pulseIn(ECHO_PIN,HIGH);
-  int tempDistance=duration*0.034/2;
-      if (tempDistance > 0 && abs(tempDistance - distance) < 100) {
-        newDistance = tempDistance;
-    }
-    return newDistance;
-}
-
-bool isClose(float distance){
-  if(distance<70){
-    return true;
-  }
-  return false
-}
 // controller
 void controller(int angle) {
   servo.write(angle);
@@ -164,13 +131,11 @@ float update(float dt, float currentValue, float targetValue) {
 
   float result = P + I + D;
 
-  return constrain(result, -45, 45);//right, left
+  return constrain(result, -45, 45);
 }
-
 // pid angle
 
 int angle_pid(float setpoint, float input) {
-
   static float error;
   static float prevError;
   static float integral;
@@ -188,6 +153,10 @@ int angle_pid(float setpoint, float input) {
   return angle_1 - pid;
 }
 
+/*=================================================================================================
+                                                Interrupts
+=================================================================================================*/
 
 /*=================================================================================================
-                                                End of File
+                                                Functions
+=================================================================================================*/
