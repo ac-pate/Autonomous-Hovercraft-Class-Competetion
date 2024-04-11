@@ -7,6 +7,7 @@
 
 long duration;
 float distance; // store the distance from sensor
+int poop_measurements = 10; // number to average
 
 Servo servo;
 
@@ -26,7 +27,8 @@ void setup() {
 
 void loop() {
   analogWrite(FAN_PIN, 255);
-
+  
+  for (int i = 0; i < poop_measurements; i++) {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
@@ -34,15 +36,20 @@ void loop() {
   digitalWrite(TRIG_PIN, LOW);
 
   // measure duration of pulse from ECHO pin
-  duration = pulseIn(ECHO_PIN, HIGH);
+  duration += pulseIn(ECHO_PIN, HIGH); ///// Duration = duration + pulsein
+  }
+  
+  // Averaging poopMeasuremts
+  duration = duration/poop_measurements; 
 
   // calculate the distance
   distance = duration * 0.017 ;
-
+  
+  
   // print the value to Serial Monitor
   Serial.print("distance: ");
   Serial.print(distance);
-  Serial.print(" cm");
+  Serial.println(" cm");
 
 }
 
