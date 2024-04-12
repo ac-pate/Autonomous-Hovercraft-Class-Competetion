@@ -12,7 +12,7 @@
 #define TRIG_PIN 13
 #define ECHO_PIN 3
 #define SERVO_PIN 6
-#define FAN_PIN 9
+#define FAN_PIN 5
 
 int delay_time = 50;
 
