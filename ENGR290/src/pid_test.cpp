@@ -45,7 +45,7 @@ static float integrationStored = 0, integralSaturation = 1;
 float valueLast, velocity, errorLast, currentTime = 0;
 enum State { STRAIGHT, TURNING };
 State currentState;
-const int measurement_count = 10;
+ int measurement_count = 10;
 
 /*=================================================================================================
                                                 Prototypes
@@ -53,6 +53,8 @@ const int measurement_count = 10;
 
 void controller(int);
 float update(float, float, float);
+float measureDistance(int);
+void printIMUData();
 /*=================================================================================================
                                                 Setup
 =================================================================================================*/
@@ -61,7 +63,7 @@ void setup() {
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   Wire.begin();
-  byte status = mpu.begin();
+  byte status = mpu.begin();    
   while (status != 0) {} // stop if IMU is not found
   servo.attach(SERVO_PIN);
   servo.write(angle_1);
@@ -130,8 +132,7 @@ float measureDistance(int measurement_count_) {
     if (pulse*0.017<2000){
       good_measurement_count++;
        duration_ += pulse;
-    }
-    
+    }  
   }
   duration_ = duration_ / good_measurement_count;
   distance_ = duration_ * 0.017;
