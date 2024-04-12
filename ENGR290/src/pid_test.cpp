@@ -2,10 +2,10 @@
 /*=================================================================================================
                                                 Includes
 =================================================================================================*/
-#include <Arduino.h>
-#include "Servo.h"
-#include <Wire.h>
 #include "MPU6050_light.h"
+#include "Servo.h"
+#include <Arduino.h>
+#include <Wire.h>
 /*=================================================================================================
                                                 Defines
 =================================================================================================*/
@@ -18,10 +18,8 @@ int delay_time = 50;
 int angle_1 = 90;
 int rot_angle = 45;
 
-
 // PID GAINS
-const float pidAngle[3] = { 2.1, 0.005, 0.01 };
-
+const float pidAngle[3] = {2.0, 0.005, 0.015};
 
 // set points,this is the desired angle
 
@@ -29,23 +27,25 @@ float angleSetpoint = 0.0;
 
 // inputs
 float inputAngle = 0.0;
-float dt=0.0;
+float dt = 0.0;
 // outpus
 float outputAngle = 0.0;
 
 // time
-const unsigned long timeStep = 500;  // Time step in milliseconds
+const unsigned long timeStep = 500; // Time step in milliseconds
 unsigned long prevTime;
-unsigned long timer;  // global timer
+unsigned long timer; // global timer
 /*=================================================================================================
                                                 Variables
 =================================================================================================*/
 Servo servo;
-int distance;
-long duration;
+float distance;
 MPU6050 mpu(Wire);
-static float integrationStored=0,integralSaturation=1;
-float valueLast,velocity,errorLast,currentTime=0;
+static float integrationStored = 0, integralSaturation = 1;
+float valueLast, velocity, errorLast, currentTime = 0;
+enum State { STRAIGHT, TURNING };
+State currentState;
+const int measurement_count = 10;
 
 /*=================================================================================================
                                                 Prototypes
@@ -57,31 +57,54 @@ float update(float, float, float);
                                                 Setup
 =================================================================================================*/
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   Wire.begin();
   byte status = mpu.begin();
-  while (status != 0) {}  //stop if IMU is not found
+  while (status != 0) {} // stop if IMU is not found
   servo.attach(SERVO_PIN);
   servo.write(angle_1);
   delay(1000);
   mpu.calcOffsets(true, true);
+  currentState = STRAIGHT;
   Wire.setWireTimeout(3000, true);
-  
 }
 /*=================================================================================================
                                                 Loop
 =================================================================================================*/
 void loop() {
   dt = millis() - currentTime;
-  analogWrite(FAN_PIN, 255);
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-
+  distance = measureDistance(measurement_count);
   mpu.update();
+  printIMUData();
+  float angle = mpu.getAngleZ();
+  switch (currentState) {
+  case STRAIGHT:
+    int control_pid = angle_1 - update(dt, angle, angleSetpoint);
+    Serial.print("angle control ");
+    Serial.println(control_pid);
+    controller(control_pid);
+    break;
+
+  case TURNING:
+  break;
+  default:
+    break;
+  }
+
+  currentTime = millis();
+  
+}
+/*=================================================================================================
+                                                Interrupts
+=================================================================================================*/
+
+/*=================================================================================================
+                                                Functions
+=================================================================================================*/
+// print IMU data
+void printIMUData() {
   Serial.print("Angle X: ");
   Serial.println(mpu.getAngleX());
   Serial.print("Angle Y: ");
@@ -90,13 +113,29 @@ void loop() {
   Serial.println(mpu.getAngleZ());
   Serial.println(" ");
   delay(100);
-  float angle = mpu.getAngleZ();
-  int control_pid = angle_1-update(dt,angle,angleSetpoint);
-  Serial.print("angle control ");
-  Serial.println(control_pid);
-  controller(control_pid);
-  
-  currentTime=millis();
+}
+
+float measureDistance(int measurement_count_) {
+  float duration_ = 0;
+  float distance_=0;
+  int good_measurement_count = 0;
+  for (int i = 0; i < measurement_count_; i++) {
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+    float pulse = pulseIn(ECHO_PIN, HIGH);
+
+    if (pulse*0.017<2000){
+      good_measurement_count++;
+       duration_ += pulse;
+    }
+    
+  }
+  duration_ = duration_ / good_measurement_count;
+  distance_ = duration_ * 0.017;
+  return distance_;
 }
 
 // controller
@@ -107,17 +146,18 @@ void controller(int angle) {
 }
 
 float update(float dt, float currentValue, float targetValue) {
-  
+
   float error = targetValue - currentValue;
 
-  //calculate P term
+  // calculate P term
   float P = pidAngle[0] * error;
 
-  //calculate I term
-  integrationStored = constrain(integrationStored + (error * dt), -integralSaturation, integralSaturation);
+  // calculate I term
+  integrationStored = constrain(integrationStored + (error * dt),
+                                -integralSaturation, integralSaturation);
   float I = pidAngle[1] * integrationStored;
 
-  //calculate both D terms
+  // calculate both D terms
   float errorRateOfChange = (error - errorLast) / dt;
   errorLast = error;
 
@@ -125,7 +165,7 @@ float update(float dt, float currentValue, float targetValue) {
   valueLast = currentValue;
   velocity = valueRateOfChange;
 
-  //choose D term to use
+  // choose D term to use
   float deriveMeasure = 0;
 
   float D = pidAngle[2] * deriveMeasure;
@@ -134,30 +174,3 @@ float update(float dt, float currentValue, float targetValue) {
 
   return constrain(result, -rot_angle, rot_angle);
 }
-// pid angle
-
-int angle_pid(float setpoint, float input) {
-  static float error;
-  static float prevError;
-  static float integral;
-  static float derivative;
-  static float dt;
-
-  float err = setpoint - input;
-  integral += err;
-  derivative = err - prevError;
-
-  float pid =
-    pidAngle[0] * err + pidAngle[1] * integral + pidAngle[2] * derivative;
-  prevError = err;
-  pid * -1;
-  return angle_1 - pid;
-}
-
-/*=================================================================================================
-                                                Interrupts
-=================================================================================================*/
-
-/*=================================================================================================
-                                                Functions
-=================================================================================================*/
