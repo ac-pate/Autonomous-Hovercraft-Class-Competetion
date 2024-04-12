@@ -31,9 +31,9 @@ const int max_spin = 45;
                                                 Prototypes
 =================================================================================================*/
 
-void turnRight(int);
+void turnRight(int );
 // void sweep();
-void us_distance();
+int us_distance();
 
 /*=================================================================================================
                                                 Setup
@@ -64,7 +64,7 @@ void loop() {
   
   us_distance();
   // sweep();
-  turnRight();
+  turnRight(45);
   delay(100);
 
   mpu.update();
@@ -117,51 +117,51 @@ int us_distance(){
 void turnRight(int input_angle){
   
         analogWrite(9, 255);  
-    servo.write(90);  
+    servo.write(angle_1);  
     delay(3000);  
      analogWrite(9, 0);  
     delay(2000);  
-    servo.write(90-45);  
+    servo.write(angle_1-input_angle);  
     delay(1000);  
      analogWrite(9, 255);  
              // tell servo to go to position in variable 'pos'
     delay(5000);  
 
-    servo.write(90);             // tell servo to go to position in variable 'pos'
+    servo.write(angle_1);             // tell servo to go to position in variable 'pos'
     delay(1500);  
 
-    servo.write(90-45);  
+    servo.write(angle_1-input_angle);  
     delay(1500);  
-    servo.write(90);   
+    servo.write(angle_1);   
 }
 
-/// @sweep is the function we  ///
-void sweep(){
-  for (pos = 90-45; pos >= 90+45; pos -= 1) { // goes from 180 degrees to 0 degrees
-    servo.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);  
-    // Serial.println(pos);                     // waits 15 ms for the servo to reach the position
+// /// @sweep is the function we  ///
+// void sweep(){
+//   for (pos = angle_1-45; pos >= angle_1+45; pos -= 1) { // goes from 180 degrees to 0 degrees
+//     servo.write(pos);              // tell servo to go to position in variable 'pos'
+//     delay(15);  
+//     // Serial.println(pos);                     // waits 15 ms for the servo to reach the position
     
-  }
-  delay(1000);
-  for (pos = 90+45; pos >= 90-45; pos -= 1) { // goes from 180 degrees to 0 degrees
-    servo.write(pos);              // tell servo to go to position in variable 'pos'
-    delay(15);  
-    // Serial.println(pos);                     // waits 15 ms for the servo to reach the position
+//   }
+//   delay(1000);
+//   for (pos = angle_1+45; pos >= angle_1-45; pos -= 1) { // goes from 180 degrees to 0 degrees
+//     servo.write(pos);              // tell servo to go to position in variable 'pos'
+//     delay(15);  
+//     // Serial.println(pos);                     // waits 15 ms for the servo to reach the position
     
-  }
-}
+//   }
+// }
 
-void sweepRight(){
-  for (currAngle = pos; currAngle <= angle_1 + max_spin; currAngle += 1) { // goes from 0 degrees to 180 degrees
-    // in steps of 1 degree
-    int pos = 90;    // variable to store the servo position
-    pos = currAngle;    //Store the current angle into the pos
-    servo.write(currAngle);              // tell servo to go to position in variable 'pos'
-    delay(15); 
-    // Serial.println( pos);   
-    if (currAngle == angle_1 + max_spin){   // 90+45 limit reached
-      return true;                   // waits 15 ms for the servo to reach the position
-    }
-  }
-}
+// void sweepRight(){
+//   for (currAngle = pos; currAngle <= angle_1 + max_spin; currAngle += 1) { // goes from 0 degrees to 180 degrees
+//     // in steps of 1 degree
+//     int pos = angle_1;    // variable to store the servo position
+//     pos = currAngle;    //Store the current angle into the pos
+//     servo.write(currAngle);              // tell servo to go to position in variable 'pos'
+//     delay(15); 
+//     // Serial.println( pos);   
+//     if (currAngle == angle_1 + max_spin){   // angle_1+45 limit reached
+//       return true;                   // waits 15 ms for the servo to reach the position
+//     }
+//   }
+// }
