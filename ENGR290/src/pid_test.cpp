@@ -12,7 +12,7 @@
 #define TRIG_PIN 13
 #define ECHO_PIN 3
 #define SERVO_PIN 6
-#define FAN_PIN 9
+#define FAN_PIN 5
 
 int delay_time = 50;
 int angle_1 = 90;
@@ -105,7 +105,7 @@ void loop() {
 /*=================================================================================================
                                                 Functions
 =================================================================================================*/
-// print IMU data
+
 void printIMUData() {
   Serial.print("Angle X: ");
   Serial.println(mpu.getAngleX());
@@ -139,7 +139,7 @@ float measureDistance(int measurement_count_) {
   return distance_;
 }
 
-// controller
+
 void controller(int angle) {
   servo.write(angle);
   delay(delay_time);
