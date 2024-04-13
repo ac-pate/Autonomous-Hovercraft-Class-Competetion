@@ -42,10 +42,11 @@ Servo servo;
 float distance;
 MPU6050 mpu(Wire);
 static float integrationStored = 0, integralSaturation = 1;
-float valueLast, velocity, errorLast, currentTime = 0;
-enum State { STRAIGHT, TURNING };
+float valueLast, velocity, errorLast, currentTime = 0,previousAngle=0;
+enum State { STRAIGHT, TURNING_LEFT, TURNING_RIGHT,TURNING};
 State currentState;
  int measurement_count = 10;
+ bool turned=false;
 
 /*=================================================================================================
                                                 Prototypes
@@ -55,6 +56,9 @@ void controller(int);
 float update(float, float, float);
 float measureDistance(int);
 void printIMUData();
+void turningRight();
+void turningLeft();
+void turning();
 /*=================================================================================================
                                                 Setup
 =================================================================================================*/
@@ -66,10 +70,10 @@ void setup() {
   byte status = mpu.begin();    
   while (status != 0) {} // stop if IMU is not found
   servo.attach(SERVO_PIN);
-  servo.write(angle_1);
   delay(1000);
   mpu.calcOffsets(true, true);
   currentState = STRAIGHT;
+  servo.write(angle_1);
   Wire.setWireTimeout(3000, true);
 }
 /*=================================================================================================
@@ -80,22 +84,34 @@ void loop() {
   distance = measureDistance(measurement_count);
   mpu.update();
   printIMUData();
-  float angle = mpu.getAngleZ();
+   if (distance < 10.0 && distance>0.0) { // Closer than 10 cm
+    currentState = TURNING;
+  } 
+  float curr_angle = mpu.getAngleZ();
   switch (currentState) {
   case STRAIGHT:
-    int control_pid = angle_1 - update(dt, angle, angleSetpoint);
+    int control_pid = angle_1 - update(dt, curr_angle, angleSetpoint);
     Serial.print("angle control ");
     Serial.println(control_pid);
     controller(control_pid);
     break;
 
   case TURNING:
+    turning();
+  break;
+  case TURNING_RIGHT:
+  turningRight();
+  break;
+  case TURNING_LEFT:
+  turningLeft();
   break;
   default:
+  
     break;
   }
 
   currentTime = millis();
+  previousAngle=curr_angle;
   
 }
 /*=================================================================================================
@@ -105,6 +121,35 @@ void loop() {
 /*=================================================================================================
                                                 Functions
 =================================================================================================*/
+void turning() {
+  analogWrite(FAN_PIN, 155);
+  servo.write(angle_1);
+  delay(1000);
+  servo.write(angle_1 + rot_angle);
+  delay(1000);
+  int disRight=measureDistance(measurement_count);
+  servo.write(angle_1 - rot_angle);
+  delay(1000);
+  int disLeft=measureDistance(measurement_count);
+  if (disRight>disLeft){
+    currentState=TURNING_RIGHT;
+  }
+  else{
+    currentState=TURNING_LEFT;
+}
+}
+void turningRight() {
+  analogWrite(FAN_PIN, 255);
+  servo.write(angle_1 + rot_angle);
+  delay(5000);
+  currentState = STRAIGHT;
+}
+void turningLeft() {
+  analogWrite(FAN_PIN, 255);
+  servo.write(angle_1 - rot_angle);
+  delay(5000);
+  currentState = STRAIGHT;
+}
 
 void printIMUData() {
   Serial.print("Angle X: ");
