@@ -1,23 +1,22 @@
 
-// /*=================================================================================================
-//                                                 Includes
-// =================================================================================================*/
-// #include "MPU6050_light.h"
-// #include "Servo.h"
-// #include <Arduino.h>
-// #include <Wire.h>
-// /*=================================================================================================
-//                                                 Defines
-// =================================================================================================*/
-// #define TRIG_PIN 13
-// #define ECHO_PIN 3
-// #define SERVO_PIN 6
-// #define FAN_PIN 5
+/*=================================================================================================
+                                                Includes
+=================================================================================================*/
+#include "MPU6050_light.h"
+#include "Servo.h"
+#include <Arduino.h>
+#include <Wire.h>
+/*=================================================================================================
+                                                Defines
+=================================================================================================*/
+#define TRIG_PIN 13
+#define ECHO_PIN 3
+#define SERVO_PIN 6
+#define FAN_PIN 9
 
-// int delay_time = 50;
-
-// const int angle_1 = 90;
-// const int max_spin = 45;
+int delay_time = 50;
+int angle_1 = 90;
+int rot_angle = 45;
 
 // // PID GAINS
 // const float pidAngle[3] = {2.0, 0.005, 0.015};
@@ -108,20 +107,20 @@
 //                                                 Interrupts
 // =================================================================================================*/
 
-// /*=================================================================================================
-//                                                 Functions
-// =================================================================================================*/
-// // print IMU data
-// void printIMUData() {
-//   Serial.print("Angle X: ");
-//   Serial.println(mpu.getAngleX());
-//   Serial.print("Angle Y: ");
-//   Serial.println(mpu.getAngleY());
-//   Serial.print("Angle Z: ");
-//   Serial.println(mpu.getAngleZ());
-//   Serial.println(" ");
-//   delay(100);
-// }
+/*=================================================================================================
+                                                Functions
+=================================================================================================*/
+// print IMU data
+void printIMUData() {
+  Serial.print("Angle X: ");
+  Serial.println(mpu.getAngleX());
+  Serial.print("Angle Y: ");
+  Serial.println(mpu.getAngleY());
+  Serial.print("Angle Z: ");
+  Serial.println(mpu.getAngleZ());
+  Serial.println(" ");
+  delay(100);
+}
 
 // void turnLeft(){
 
@@ -152,12 +151,12 @@
 //   return distance_;
 // }
 
-// // controller
-// void controller(int angle) {
-//   servo.write(angle);
-//   delay(delay_time);
-//   analogWrite(FAN_PIN, 255);
-// }
+// controller
+void controller(int angle) {
+  servo.write(angle);
+  delay(delay_time);
+  analogWrite(FAN_PIN, 255);
+}
 
 // float update(float dt, float currentValue, float targetValue) {
 
