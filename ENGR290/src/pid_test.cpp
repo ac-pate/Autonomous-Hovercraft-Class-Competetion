@@ -17,6 +17,7 @@
 int delay_time = 50;
 int angle_1 = 90;
 int rot_angle = 45;
+const int stop_distance = 80;
 
 // PID GAINS
 const float pidAngle[3] = {2.0, 0.005, 0.015};
@@ -84,10 +85,14 @@ void loop() {
   distance = measureDistance(measurement_count);
   mpu.update();
   printIMUData();
-   if (distance < 10.0 && distance>0.0) { // Closer than 10 cm
+   if (distance < stop_distance && distance>0.0) { // Closer than 10 cm
     currentState = TURNING;
   } 
+  
   float curr_angle = mpu.getAngleZ();
+   if (abs(curr_angle - previousAngle) >= 180.0) {
+    turned = true;
+  }
   switch (currentState) {
   case STRAIGHT:
     int control_pid = angle_1 - update(dt, curr_angle, angleSetpoint);
