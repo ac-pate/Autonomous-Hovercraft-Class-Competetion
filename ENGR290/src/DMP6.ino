@@ -156,9 +156,9 @@ void setup() {
 void loop() {
   dt = millis() - currentTime;
 float dis=measureDistance();
-Serial.print("Distamce: ");
-Serial.println(dis);
- if (dis<80&&dis>0){
+//Serial.print("Distamce: ");
+//Serial.println(dis);
+ if (dis<50&&dis>0){
   currentState=TURNING;
  }
 
@@ -167,7 +167,7 @@ Serial.println(dis);
   case STRAIGHT:{
     analogWrite(FAN_PIN,255);
     float curr_angle=IMUAngle();
-    Serial.println(curr_angle);
+    //Serial.println(curr_angle);
     if(!turned){
       angleSetpoint=0;
     }
@@ -193,33 +193,31 @@ Serial.println(dis);
       int disRight=measureDistance();
       Serial.print("Distance Right: ");
       Serial.println(disRight);
-      delay(1000);
+      
       //check left
       servo.write(centerAngle-rotAngle);
       delay(2000);
       int disLeft=measureDistance();
       Serial.print("Distance Left: ");
       Serial.println(disLeft);
-      delay(1000);
+      
       if (disRight>disLeft){
-        currentState=TURNING_RIGHT;
-
+        Serial.println("RIGHT");
+        turnRight(); 
       }
       else{
-        currentState=TURNING_LEFT;
+         Serial.println("LEFT");
+         turnLeft();
+        
       }
-      turned=true;
-      //to refactor
-
-       
-  }
-  case TURNING_RIGHT:{
-    turnRight();
-  }
-  case TURNING_LEFT:{
-    turnLeft();
-  }
-    
+      if(!turned){
+        turned=true;
+      }
+      else{
+        turned=false;
+      }
+       break;
+  } 
  }
  currentTime = millis();
 }
@@ -236,17 +234,21 @@ float IMUAngle(){
   return (ypr[0]*180/M_PI);
 }
 void turnRight(){
-  analogWrite(FAN_PIN, 255);
   servo.write(centerAngle + rotAngle);
-  delay(5000);
-  currentState = STRAIGHT;
+  analogWrite(FAN_PIN, 255);
+  
+  if(IMUAngle()>170){
+    currentState = STRAIGHT; 
+  }
   
 }
 void turnLeft(){
-  analogWrite(FAN_PIN, 255);
   servo.write(centerAngle - rotAngle);
-  delay(7000);
-  currentState = STRAIGHT;
+  analogWrite(FAN_PIN, 255);
+  
+  if(IMUAngle()<-170){
+    currentState = STRAIGHT;
+  }
  
 }
 
