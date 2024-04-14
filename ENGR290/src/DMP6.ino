@@ -11,6 +11,8 @@ MPU6050 mpu;
 #define OUTPUT_READABLE_YAWPITCHROLL
 #define SERVO_PIN 6
 #define FAN_PIN 5
+#define TRIG_PIN 13
+#define ECHO_PIN 3
 
 
 
@@ -24,11 +26,15 @@ unsigned long timer; // global timer
 float currentTime=0;
 float errorLast=0;
 float angleSetpoint = 0.0;
-const float pidAngle[3] = {2.0, 0.005, 0.01};
+const float pidAngle[3] = {2.3, 0.005, 0.01};
 static float integrationStored = 0, integralSaturation = 1;
 float velocity;
 float valueLast;
 Servo servo;
+enum State { STRAIGHT, TURNING_LEFT, TURNING_RIGHT,TURNING};
+State currentState;
+const int centerAngle=90;
+const int rotAngle=45;
 
 // MPU control/status vars
 bool dmpReady = false;   // set true if DMP init was successful
@@ -79,35 +85,24 @@ void setup() {
  
   Serial.begin(115200);
   while (!Serial)
-    ;  // wait for Leonardo enumeration, others continue immediately
-
-  // initialize device
+    ; 
+ 
   Serial.println(F("Initializing I2C devices..."));
   mpu.initialize();
   pinMode(INTERRUPT_PIN, INPUT);
 
-  // verify connection
- // Serial.println(F("Testing device connections..."));
-  //Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
 
-  // wait for ready
-  //Serial.println(F("\nSend any character to begin DMP programming and demo: "));
- // while (Serial.available() && Serial.read())
-  //  ;  // empty buffer
- // while (!Serial.available())
- //   ;  // wait for data
- // while (Serial.available() && Serial.read())
- //   ;  // empty buffer again
+
 
   // load and configure the DMP
   Serial.println(F("Initializing DMP..."));
   devStatus = mpu.dmpInitialize();
 
-  // supply your own gyro offsets here, scaled for min sensitivity
+  
   mpu.setXGyroOffset(220);
   mpu.setYGyroOffset(76);
   mpu.setZGyroOffset(-85);
-  mpu.setZAccelOffset(1788);  // 1688 factory default for my test chip
+  mpu.setZAccelOffset(1788);  
 
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
@@ -148,6 +143,7 @@ void setup() {
   delay(10);
   servo.write(90);
   analogWrite(FAN_PIN,255);
+  currentState=STRAIGHT;
 }
 
 
@@ -158,11 +154,50 @@ void setup() {
 
 void loop() {
   dt = millis() - currentTime;
- float curr_angle=IMUAngle();
- Serial.println(curr_angle);
+float dis=measureDistance();
+Serial.println(dis);
+ if (dis<80&&dis>0){
+  currentState=TURNING;
+ }
 
- int control_pid = 90 + update(dt, curr_angle, angleSetpoint);
- controller(control_pid);
+ switch(currentState){
+  case STRAIGHT:{
+    analogWrite(FAN_PIN,255);
+    float curr_angle=IMUAngle();
+    Serial.println(curr_angle);
+    int control_pid = centerAngle + update(dt, curr_angle, angleSetpoint);
+    controller(control_pid);
+    break;
+  }
+  case TURNING: {
+      analogWrite(FAN_PIN,155);
+      servo.write(centerAngle);
+      delay(1000);
+      //check right
+      servo.write(centerAngle+rotAngle);
+      delay(5000);
+      int disRight=measureDistance();
+      delay(1000);
+      //check left
+      servo.write(centerAngle-rotAngle);
+      delay(5000);
+      int disLeft=measureDistance();
+      delay(1000);
+      if (disRight>disLeft){
+        currentState=TURNING_RIGHT;
+      }
+      else{
+        currentState=TURNING_LEFT;
+      } 
+  }
+  case TURNING_RIGHT:{
+    turnRight();
+  }
+  case TURNING_LEFT:{
+    turnLeft();
+  }
+    
+ }
  currentTime = millis();
 }
 
@@ -174,10 +209,37 @@ float IMUAngle(){
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    
-    
   }
   return (ypr[0]*180/M_PI);
+}
+void turnRight(){
+  analogWrite(FAN_PIN, 255);
+  servo.write(centerAngle + rotAngle);
+  delay(5000);
+  currentState = STRAIGHT;
+}
+void turnLeft(){
+  analogWrite(FAN_PIN, 255);
+  servo.write(centerAngle - rotAngle);
+  delay(5000);
+  currentState = STRAIGHT;
+}
+
+float measureDistance() {
+  float duration_ = 0;
+  float distance_=0;
+  int good_measurement_count = 0;
+  
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+    float pulse = pulseIn(ECHO_PIN, HIGH);
+    duration_ = pulse;
+  distance_ = duration_ * 0.017;
+  
+  return distance_;
 }
 
 
