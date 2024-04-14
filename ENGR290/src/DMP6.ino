@@ -34,7 +34,8 @@ Servo servo;
 enum State { STRAIGHT, TURNING_LEFT, TURNING_RIGHT,TURNING};
 State currentState;
 const int centerAngle=90;
-const int rotAngle=45;
+const int rotAngle=40;
+bool turned=false;
 
 // MPU control/status vars
 bool dmpReady = false;   // set true if DMP init was successful
@@ -74,11 +75,13 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
-
-
+// join I2C bus (I2Cdev library doesn't do this automatically)
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
   Wire.begin();
-  Wire.setClock(400000);  
-
+  Wire.setClock(400000);  // 400kHz I2C clock. Comment this line if having compilation difficulties
+#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+  Fastwire::setup(400, true);
+#endif
 
  
   Serial.begin(115200);
@@ -123,10 +126,13 @@ void setup() {
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
 
-    
+    // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
   } else {
-    
+    // ERROR!
+    // 1 = initial memory load failed
+    // 2 = DMP configuration updates failed
+    // (if it's going to break, usually the code will be 1)
     Serial.print(F("DMP Initialization failed (code "));
     Serial.print(devStatus);
     Serial.println(F(")"));
@@ -150,40 +156,62 @@ void setup() {
 void loop() {
   dt = millis() - currentTime;
 float dis=measureDistance();
+Serial.print("Distamce: ");
 Serial.println(dis);
  if (dis<80&&dis>0){
   currentState=TURNING;
  }
+
 
  switch(currentState){
   case STRAIGHT:{
     analogWrite(FAN_PIN,255);
     float curr_angle=IMUAngle();
     Serial.println(curr_angle);
+    if(!turned){
+      angleSetpoint=0;
+    }
+    else{
+      if(curr_angle>0){
+        angleSetpoint=180;
+      }
+      else{
+        angleSetpoint = -180;
+      }
+    }
     int control_pid = centerAngle + update(dt, curr_angle, angleSetpoint);
     controller(control_pid);
     break;
   }
   case TURNING: {
-      analogWrite(FAN_PIN,155);
+      analogWrite(FAN_PIN,0);
       servo.write(centerAngle);
       delay(1000);
       //check right
       servo.write(centerAngle+rotAngle);
-      delay(5000);
+      delay(2000);
       int disRight=measureDistance();
+      Serial.print("Distance Right: ");
+      Serial.println(disRight);
       delay(1000);
       //check left
       servo.write(centerAngle-rotAngle);
-      delay(5000);
+      delay(2000);
       int disLeft=measureDistance();
+      Serial.print("Distance Left: ");
+      Serial.println(disLeft);
       delay(1000);
       if (disRight>disLeft){
         currentState=TURNING_RIGHT;
+
       }
       else{
         currentState=TURNING_LEFT;
-      } 
+      }
+      turned=true;
+      //to refactor
+
+       
   }
   case TURNING_RIGHT:{
     turnRight();
@@ -212,12 +240,14 @@ void turnRight(){
   servo.write(centerAngle + rotAngle);
   delay(5000);
   currentState = STRAIGHT;
+  
 }
 void turnLeft(){
   analogWrite(FAN_PIN, 255);
   servo.write(centerAngle - rotAngle);
-  delay(5000);
+  delay(7000);
   currentState = STRAIGHT;
+ 
 }
 
 float measureDistance() {
@@ -270,5 +300,5 @@ float update(float dt, float currentValue, float targetValue) {
 void controller(int angle) {
   servo.write(angle);
   delay(25);
-  //analogWrite(FAN_PIN, 255);
+  analogWrite(FAN_PIN, 255);
 }
