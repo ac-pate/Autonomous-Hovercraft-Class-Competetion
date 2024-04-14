@@ -74,13 +74,11 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
-// join I2C bus (I2Cdev library doesn't do this automatically)
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+
+
   Wire.begin();
-  Wire.setClock(400000);  // 400kHz I2C clock. Comment this line if having compilation difficulties
-#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-  Fastwire::setup(400, true);
-#endif
+  Wire.setClock(400000);  
+
 
  
   Serial.begin(115200);
@@ -125,13 +123,10 @@ void setup() {
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
 
-    // get expected DMP packet size for later comparison
+    
     packetSize = mpu.dmpGetFIFOPacketSize();
   } else {
-    // ERROR!
-    // 1 = initial memory load failed
-    // 2 = DMP configuration updates failed
-    // (if it's going to break, usually the code will be 1)
+    
     Serial.print(F("DMP Initialization failed (code "));
     Serial.print(devStatus);
     Serial.println(F(")"));
