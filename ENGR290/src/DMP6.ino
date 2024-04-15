@@ -139,7 +139,8 @@ void setup() {
   }
 
   // configure LED for output
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT); 
   servo.attach(SERVO_PIN);
   delay(10);
   servo.write(90);
@@ -155,16 +156,14 @@ void setup() {
 
 void loop() {
   dt = millis() - currentTime;
-float dis=measureDistance();
-//Serial.print("Distamce: ");
-//Serial.println(dis);
- if (dis<50&&dis>0){
-  currentState=TURNING;
- }
-
-
  switch(currentState){
   case STRAIGHT:{
+    float dis=measureDistance();
+//Serial.print("Distamce: ");
+//Serial.println(dis);
+  if (dis<70&&dis>0){
+    currentState=TURNING;
+  }
     analogWrite(FAN_PIN,255);
     float curr_angle=IMUAngle();
     //Serial.println(curr_angle);
@@ -173,7 +172,7 @@ float dis=measureDistance();
     }
     else{
       if(curr_angle>0){
-        angleSetpoint=180;
+        angleSetpoint = 180;
       }
       else{
         angleSetpoint = -180;
@@ -191,30 +190,22 @@ float dis=measureDistance();
       servo.write(centerAngle+rotAngle);
       delay(2000);
       int disRight=measureDistance();
-      Serial.print("Distance Right: ");
-      Serial.println(disRight);
+
       
       //check left
       servo.write(centerAngle-rotAngle);
       delay(2000);
       int disLeft=measureDistance();
-      Serial.print("Distance Left: ");
-      Serial.println(disLeft);
+
       
       if (disRight>disLeft){
-        Serial.println("RIGHT");
+       
         turnRight(); 
       }
       else{
-         Serial.println("LEFT");
+         
          turnLeft();
         
-      }
-      if(!turned){
-        turned=true;
-      }
-      else{
-        turned=false;
       }
        break;
   } 
@@ -234,38 +225,50 @@ float IMUAngle(){
   return (ypr[0]*180/M_PI);
 }
 void turnRight(){
-  servo.write(centerAngle + rotAngle);
+  servo.write(centerAngle + 52);
   analogWrite(FAN_PIN, 255);
-  
-  if(IMUAngle()>170){
-    currentState = STRAIGHT; 
+  while(true){
+    if(IMUAngle()>160){
+      controller(centerAngle);
+      if(!turned){
+        turned=true;
+      }
+      else{
+        turned=false;
+      }
+      currentState = STRAIGHT; 
+      break;
   }
-  
+  }
 }
 void turnLeft(){
   servo.write(centerAngle - rotAngle);
   analogWrite(FAN_PIN, 255);
   
-  if(IMUAngle()<-170){
-    currentState = STRAIGHT;
+  while(true){
+    if(IMUAngle()<-160){
+      controller(centerAngle);
+      if(!turned){
+        turned=true;
+      }
+      else{
+        turned=false;
+      }
+      currentState = STRAIGHT;
+      break;
   }
- 
+  }
 }
 
 float measureDistance() {
-  float duration_ = 0;
-  float distance_=0;
-  int good_measurement_count = 0;
-  
-    digitalWrite(TRIG_PIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    float pulse = pulseIn(ECHO_PIN, HIGH);
-    duration_ = pulse;
+  float distance_;
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  float duration_ = pulseIn(ECHO_PIN, HIGH);
   distance_ = duration_ * 0.017;
-  
+  delay(2);
+  digitalWrite(TRIG_PIN, LOW);
   return distance_;
 }
 
