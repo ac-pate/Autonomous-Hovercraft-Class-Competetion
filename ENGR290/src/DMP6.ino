@@ -161,12 +161,12 @@ void loop() {
     float dis=measureDistance();
 //Serial.print("Distamce: ");
 //Serial.println(dis);
-  if (dis<70&&dis>0){
+  if (dis<1&&dis>0){
     currentState=TURNING;
   }
     analogWrite(FAN_PIN,255);
     float curr_angle=IMUAngle();
-    //Serial.println(curr_angle);
+    Serial.println(curr_angle);
     if(!turned){
       angleSetpoint=0;
     }
