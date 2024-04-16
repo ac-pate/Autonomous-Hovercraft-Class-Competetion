@@ -2,6 +2,7 @@
 /*Including control with distance */
 #include "Servo.h"
 #include "I2Cdev.h"
+#include "NewPing.h"
 
 #include "MPU6050_6Axis_MotionApps20.h"
 
@@ -31,13 +32,13 @@ float currentTime = 0;
 float errorLast = 0;
 float angleSetpoint = 0.0;
 float distanceSetpoint = 50;
-const int right_turning_delay = 20000;  //
+const int right_turning_delay = 10000;  //
 const int left_turning_delay = 3000;
 
 
 float stop_distance = 70;
 float turn_ditance = 60;
-const float pidAngle[3] = { 2.3, 0.05, 0.01 };
+const float pidAngle[3] = { 2.1, 0.05, 0.01 };
 const float pidDistance[3] = { 3, 0.5, 1 };
 
 // turn counter to keep track of imu state
@@ -45,6 +46,7 @@ int turn_count = 1;
 
 
 Servo servo;
+NewPing sonar(TRIG_PIN,ECHO_PIN, 400);
 enum State { STRAIGHT,
              TURNING_LEFT,
              TURNING_RIGHT,
@@ -188,13 +190,13 @@ void solve_maze() {
       }
     case SEARCH:
       {
-        int delay_time = 350;
+        int delay_time = 1000;
         servo.write(centerAngle - rotAngle);
         delay(delay_time);
         int disLeft = getCornerMeasurements();
         servo.write(centerAngle);
         delay(delay_time);
-        int disCenter = getCornerMeasurements();
+        int disCenter = measureDistanceForward();
         servo.write(centerAngle + rotAngle);
         delay(delay_time);
         int disRight = getCornerMeasurements();
@@ -212,6 +214,9 @@ void solve_maze() {
           currentState = STRAIGHT;
           break;
         }
+        if(disLeft==disRight){
+          currentState= STRAIGHT;
+        }
 
         if (disLeft > disRight) {
           currentState = TURNING_LEFT;
@@ -219,7 +224,7 @@ void solve_maze() {
         }
 
         if (disRight > disLeft) {
-          currentState = TURNING_RIGHT;
+          currentState = TURNING_RIGHT;//change to turning right
           break;
         }
       }
@@ -267,7 +272,7 @@ void forward() {
       continue;
     }
 
-    float curr_distance = measureDistance();
+    float curr_distance = measureDistanceForward();
     Serial.print("DISTANCE: ");Serial.println(curr_distance);
     float angle = centerAngle + update(dt, curr_angle, angleSetpoint);
 
@@ -306,7 +311,7 @@ void turnRight() {
       return;
     }
 
-    if (angle < 0) {//to change if needed
+    if (angle > 178) {//to change if needed
       switchTurned();
       currentState = STRAIGHT;
       Serial.print("Breaking out to search  from RIGHT to FOWARD, TIMEOUT");
@@ -314,8 +319,8 @@ void turnRight() {
       turn_count++;
       return;
     }
-    Serial.print("RIGHT");
-    Serial.println(angle);
+    //Serial.print("RIGHT");
+    //Serial.println(angle);
     analogWrite(FAN_PIN, 255);
     servo.write(centerAngle + 52);
     lastValue = angle;
@@ -335,17 +340,17 @@ void turnLeft() {
       currentState = SEARCH;
       return;
     }
-    if (angle > 0) {
+    if (angle < -178) {
       switchTurned();
       currentState = STRAIGHT;
       Serial.print("Breaking out to search  from LEFT to FOWARD");
       turn_count++;
       return;
     }
-    Serial.print("LEFT :  ");
-    Serial.println(angle);
+    //Serial.print("LEFT :  ");
+    //Serial.println(angle);
     analogWrite(FAN_PIN, 255);
-    servo.write(centerAngle - rotAngle);
+    servo.write(centerAngle - 52);
 
     // update the last value
     lastValue = angle;
@@ -369,28 +374,12 @@ float IMUAngle() {
 }
 
 
-
-float measureDistance() {
-  const int WINDOW_SIZE = 5;
-  float sum = 0;
-
-  for (int i = 0; i < WINDOW_SIZE; i++) {
-    // Trigger the ultrasonic sensor
-    digitalWrite(TRIG_PIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    float pulse = pulseIn(ECHO_PIN, HIGH);
-    float duration_ = pulse;
-    float distance_ = duration_ * 0.017;
-    sum += distance_;
-  }
-  // Calculate the moving average
-  float movingAverage = sum / WINDOW_SIZE;
-
-
-  return movingAverage;
+float measureDistanceForward() {
+ float distance= sonar.ping_median(5)/2/29;
+ if(distance<=0.1){
+  distance=400;
+ }
+ return distance;
 }
 
 
@@ -403,32 +392,11 @@ void switchTurned() {
   }
 }
 float getCornerMeasurements() {
-  const int WINDOW_SIZE = 100;
-  // static float distances[WINDOW_SIZE] = { 0 };
-  float sum = 0;
-
-  for (int i = 0; i < WINDOW_SIZE; i++) {
-    // Trigger the ultrasonic sensor
-    digitalWrite(TRIG_PIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    float pulse = pulseIn(ECHO_PIN, HIGH);
-    float duration_ = pulse;
-    float distance_ = duration_ * 0.017;
-    sum += distance_;
-  }
-
-
-
-
-
-  // Calculate the moving average
-  float movingAverage = sum / WINDOW_SIZE;
-
-
-  return movingAverage;
+ float distance= sonar.ping_median(35)/2/29;
+ if(distance<=0.1){
+  distance=400;
+ }
+ return distance;
 }
 
 float update(float dt, float currentValue, float targetValue) {
@@ -464,18 +432,18 @@ float update(float dt, float currentValue, float targetValue) {
 
   float result = P;
 
-  Serial.print("Error : ");
-  Serial.print(error);
-  Serial.print("\tSetPoiny ");
-  Serial.println(targetValue);
-  Serial.print("\tdt: ");
-  Serial.println(dt);
-  Serial.print("\tP: ");
-  Serial.print(P);
-  Serial.print("\tI: ");
-  Serial.print(I);
-  Serial.print("\tD: ");
-  Serial.println(D);
+  // Serial.print("Error : ");
+  // Serial.print(error);
+  // Serial.print("\tSetPoiny ");
+  // Serial.println(targetValue);
+  // Serial.print("\tdt: ");
+  // Serial.println(dt);
+  // Serial.print("\tP: ");
+  // Serial.print(P);
+  // Serial.print("\tI: ");
+  // Serial.print(I);
+  // Serial.print("\tD: ");
+  // Serial.println(D);
 
   return constrain(result, -40, 40);
 }
